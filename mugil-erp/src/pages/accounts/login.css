@@ -1373,16 +1373,3 @@
 .light-theme .stat-card:nth-child(3) p {
   color: #d97706 !important;
 }
-.department-group{
-    margin-bottom:20px;
-}
-
-.department-group select{
-    width:100%;
-    color: #e7e2de !important;
-    height:48px;
-    border-radius:10px;
-    padding:0 14px;
-    font-size:15px;
-    cursor:pointer;
-}
