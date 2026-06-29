@@ -225,7 +225,13 @@ export default function LoginTemplate({
 
       if (result?.success) {
         setLoading(false);
-        navigate("/welcome", { replace: true });
+
+        if (department === "material-planning") {
+          navigate("/inventory", { replace: true });
+        } else {
+          navigate("/welcome", { replace: true });
+        }
+
         return;
       }
 
