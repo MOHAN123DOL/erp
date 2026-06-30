@@ -15,7 +15,6 @@ import Consumable from "./pages/material-planning/Consumable.jsx";
 export default function App() {
   return (
     <AuthProvider>
-      <CustomCursor />
       <Routes>
         <Route
           path="/"
