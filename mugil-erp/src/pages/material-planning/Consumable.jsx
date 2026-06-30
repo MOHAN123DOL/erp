@@ -1,70 +1,52 @@
 import { Link } from "react-router-dom";
 import {
-  Database,
   PackagePlus,
-  PackageMinus,
   Boxes,
-  AlertTriangle,
-  ArrowLeftRight,
-  ShoppingCart,
+  PackageMinus,
+  Undo2,
   BarChart3,
   ArrowLeft,
 } from "lucide-react";
 import "./Consumable.css";
+import Header from "../../components/Header";
 
 const consumableActions = [
   {
-    code: "CM",
-    title: "Consumable Master",
-    description: "Maintain master records for all consumable items.",
-    icon: Database,
+    code: "GRN",
+    title: "GRN (Goods Receipt Note)",
+    description: "Receive consumables from suppliers.",
+    icon: PackagePlus,
   },
   {
-    code: "GRN",
-    title: "Receive Consumables",
-    description: "Record incoming consumables against purchase orders.",
-    icon: PackagePlus,
+    code: "STK",
+    title: "Consumable Stock",
+    description: "Display current consumable stock levels.",
+    icon: Boxes,
   },
   {
     code: "ISS",
     title: "Issue Consumables",
-    description: "Issue consumables to production lines and the shop floor.",
+    description: "Issue consumables to departments or production.",
     icon: PackageMinus,
   },
   {
-    code: "STK",
-    title: "Current Stock",
-    description: "View live stock levels for all consumable items.",
-    icon: Boxes,
-  },
-  {
-    code: "MSA",
-    title: "Minimum Stock Alert",
-    description: "Track items that have fallen below reorder level.",
-    icon: AlertTriangle,
-  },
-  {
-    code: "STN",
-    title: "Stock Transfer",
-    description: "Transfer consumable stock between stores and locations.",
-    icon: ArrowLeftRight,
-  },
-  {
-    code: "PR",
-    title: "Purchase Request",
-    description: "Raise purchase requests for consumables running low.",
-    icon: ShoppingCart,
+    code: "RET",
+    title: "Return Consumables",
+    description: "Return unused consumables back to inventory.",
+    icon: Undo2,
   },
   {
     code: "RPT",
     title: "Reports",
-    description: "Generate usage, stock, and purchase reports.",
+    description: "GRN, stock, issue, and consumption reports.",
     icon: BarChart3,
   },
 ];
 
 export default function Consumable() {
   return (
+     <>
+          <Header />
     <div className="consumable-page">
       <Link to="/inventory" className="consumable-back">
         <ArrowLeft size={15} />
@@ -95,5 +77,6 @@ export default function Consumable() {
         })}
       </div>
     </div>
+    </>
   );
 }

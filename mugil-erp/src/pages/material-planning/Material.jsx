@@ -1,70 +1,66 @@
 import { Link } from "react-router-dom";
 import {
-  Database,
   PackagePlus,
   Boxes,
-  PackageMinus,
-  Undo2,
-  ArrowLeftRight,
-  Search,
+  Layers,
+  Scissors,
+  Ban,
   BarChart3,
   ArrowLeft,
 } from "lucide-react";
 import "./Material.css";
+import Header from "../../components/Header";
 
 const materialActions = [
   {
-    code: "MM",
-    title: "Material Master",
-    description: "Maintain master records for grades, specs, and units of measure.",
-    icon: Database,
-  },
-  {
     code: "GRN",
-    title: "Receive Material (GRN)",
-    description: "Record incoming raw material against purchase orders.",
+    title: "GRN (Goods Receipt Note)",
+    description: "Receive new raw materials from suppliers.",
     icon: PackagePlus,
   },
   {
     code: "STK",
     title: "Material Stock",
-    description: "View live stock levels across all warehouse locations.",
+    description: "Live stock levels across full inventory and cutting balances.",
     icon: Boxes,
+    isStock: true,
+    subSections: [
+      {
+        label: "Full Material Stock",
+        description: "Complete on-hand quantities by item and location.",
+        icon: Layers,
+      },
+      {
+        label: "Cutting Balance Stock",
+        description: "Remaining balances left over after cutting operations.",
+        icon: Scissors,
+      },
+    ],
   },
   {
-    code: "ISS",
-    title: "Issue Material",
-    description: "Issue raw material to production and work orders.",
-    icon: PackageMinus,
+    code: "SCR",
+    title: "Scrap Materials",
+    description: "Store and manage scrap generated after cutting and fabrication.",
+    icon: Scissors,
   },
   {
-    code: "RET",
-    title: "Return Material",
-    description: "Process returns of unused or rejected material to stock.",
-    icon: Undo2,
-  },
-  {
-    code: "STN",
-    title: "Stock Transfer",
-    description: "Transfer material stock between stores and locations.",
-    icon: ArrowLeftRight,
-  },
-  {
-    code: "SRCH",
-    title: "Search Material",
-    description: "Search and filter materials by code, grade, or dimension.",
-    icon: Search,
+    code: "REJ",
+    title: "Rejection Materials",
+    description: "Store materials rejected for quality issues or damage.",
+    icon: Ban,
   },
   {
     code: "RPT",
-    title: "Material Reports",
-    description: "Generate consumption, stock, and movement reports.",
+    title: "Reports",
+    description: "Inventory, stock, GRN, scrap, and rejection reports.",
     icon: BarChart3,
   },
 ];
 
 export default function Material() {
   return (
+    <>
+              <Header />
     <div className="material-page">
       <Link to="/inventory" className="material-back">
         <ArrowLeft size={15} />
@@ -80,6 +76,43 @@ export default function Material() {
       <div className="material-grid">
         {materialActions.map((action) => {
           const Icon = action.icon;
+
+          if (action.isStock) {
+            return (
+              <div
+                className="material-card material-card-wide"
+                key={action.title}
+              >
+                <div className="material-card-top">
+                  <div className="material-icon">
+                    <Icon size={22} strokeWidth={1.8} />
+                  </div>
+                  <span className="material-code">{action.code}</span>
+                </div>
+                <h3 className="material-card-title">{action.title}</h3>
+                <p className="material-card-desc">{action.description}</p>
+
+                <div className="material-subgrid">
+                  {action.subSections.map((sub) => {
+                    const SubIcon = sub.icon;
+                    return (
+                      <div className="material-subcard" key={sub.label}>
+                        <div className="material-subcard-icon">
+                          <SubIcon size={17} strokeWidth={1.8} />
+                        </div>
+                        <div>
+                          <h4 className="material-subcard-title">{sub.label}</h4>
+                          <p className="material-subcard-desc">{sub.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+            );
+          }
+
           return (
             <div className="material-card" key={action.title}>
               <div className="material-card-top">
@@ -95,5 +128,6 @@ export default function Material() {
         })}
       </div>
     </div>
+    </>
   );
 }

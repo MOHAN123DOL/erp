@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Layers, Wrench, ArrowRight } from "lucide-react";
 import "./Inventory.css";
+import Header from "../../components/Header";
 
 const inventoryModules = [
   {
@@ -48,53 +49,58 @@ const inventoryModules = [
     ],
   },
 ];
-
 export default function Inventory() {
   return (
-    <div className="inventory-page">
-      <header className="inventory-header">
-        <span className="inventory-eyebrow">Inventory</span>
-        <h1 className="inventory-title">Inventory Control Center</h1>
-        <p className="inventory-subtitle">
-          Choose a module to manage stock, movements, and records across the plant.
-        </p>
-      </header>
+    <>
+      <Header />
 
-      <div className="inventory-grid">
-        {inventoryModules.map((mod) => {
-          const Icon = mod.icon;
-          return (
-            <Link
-              to={mod.path}
-              key={mod.id}
-              className={`inventory-card inventory-card--${mod.accent}`}
-            >
-              <div className="inventory-card-top">
-                <div className={`inventory-icon inventory-icon--${mod.accent}`}>
-                  <Icon size={28} strokeWidth={1.8} />
+      <div className="inventory-page">
+        <header className="inventory-header">
+          <span className="inventory-eyebrow">Inventory</span>
+          <h1 className="inventory-title">Inventory Control Center</h1>
+          <p className="inventory-subtitle">
+            Choose a module to manage stock, movements, and records across the plant.
+          </p>
+        </header>
+
+        <div className="inventory-grid">
+          {inventoryModules.map((mod) => {
+            const Icon = mod.icon;
+
+            return (
+              <Link
+                to={mod.path}
+                key={mod.id}
+                className={`inventory-card inventory-card--${mod.accent}`}
+              >
+                <div className="inventory-card-top">
+                  <div className={`inventory-icon inventory-icon--${mod.accent}`}>
+                    <Icon size={28} strokeWidth={1.8} />
+                  </div>
+
+                  <span className="inventory-code">{mod.code}</span>
                 </div>
-                <span className="inventory-code">{mod.code}</span>
-              </div>
 
-              <h2 className="inventory-card-title">{mod.title}</h2>
-              <p className="inventory-card-desc">{mod.description}</p>
+                <h2 className="inventory-card-title">{mod.title}</h2>
+                <p className="inventory-card-desc">{mod.description}</p>
 
-              <div className="inventory-tags">
-                {mod.examples.map((example) => (
-                  <span className="inventory-tag" key={example}>
-                    {example}
-                  </span>
-                ))}
-              </div>
+                <div className="inventory-tags">
+                  {mod.examples.map((example) => (
+                    <span className="inventory-tag" key={example}>
+                      {example}
+                    </span>
+                  ))}
+                </div>
 
-              <div className="inventory-card-footer">
-                <span>Open module</span>
-                <ArrowRight size={18} className="inventory-arrow" />
-              </div>
-            </Link>
-          );
-        })}
+                <div className="inventory-card-footer">
+                  <span>Open module</span>
+                  <ArrowRight size={18} className="inventory-arrow" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
