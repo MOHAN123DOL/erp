@@ -12,14 +12,17 @@ import WelcomePage from "./pages/WelcomePage.jsx";
 import Inventory from "./pages/material-planning/Inventory.jsx";
 import Material from "./pages/material-planning/Material.jsx";
 import Consumable from "./pages/material-planning/Consumable.jsx";
+
+import MaterialGRN from "./pages/material-planning/Materialgrn";
+import MaterialStock from "./pages/material-planning/Materialstock";
+
+import IssueMaterialToCutting from "./pages/material-planning/issuematerialtocutting";
+
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route
-          path="/"
-          element={<Navigate to="/production/login" replace />}
-        />
+        <Route path="/" element={<Navigate to="/production/login" replace />} />
         <Route path="/production/login" element={<ProductionLoginPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/hr/login" element={<HrLoginPage />} />
@@ -37,36 +40,61 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-                          <Route
-                    path="/inventory"
-                    element={
-                      <ProtectedRoute>
-                        <Inventory />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/inventory/material"
-                    element={
-                      <ProtectedRoute>
-                        <Material />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/inventory/consumable"
-                    element={
-                      <ProtectedRoute>
-                        <Consumable />
-                      </ProtectedRoute>
-                    }
-                  />
         <Route
-          path="*"
-          element={<Navigate to="/production/login" replace />}
+          path="/inventory"
+          element={
+            <ProtectedRoute>
+              <Inventory />
+            </ProtectedRoute>
+          }
         />
+
+        <Route
+          path="/inventory/material"
+          element={
+            <ProtectedRoute>
+              <Material />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory/consumable"
+          element={
+            <ProtectedRoute>
+              <Consumable />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory/material/grn"
+          element={
+            <ProtectedRoute>
+              <MaterialGRN />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory/material/stock"
+          element={
+            <ProtectedRoute>
+              <MaterialStock />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory/material/issue-cutting"
+          element={
+            <ProtectedRoute>
+              <IssueMaterialToCutting />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/production/login" replace />} />
       </Routes>
     </AuthProvider>
   );

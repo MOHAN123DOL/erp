@@ -1,0 +1,438 @@
+/* MaterialStock.css - Independent styles for the Material Stock page */
+
+/* Container */
+.ms-page {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 24px 28px 64px;
+  color: #1c2a35;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  background: #f4f6f8;
+}
+
+/* Breadcrumb */
+.ms-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: #64768a;
+  margin-bottom: 18px;
+}
+
+.ms-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ms-breadcrumb-sep {
+  margin: 0 4px;
+  opacity: 0.6;
+}
+
+/* Header */
+.ms-header {
+  margin-bottom: 24px;
+}
+
+.ms-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f2942;
+  margin: 0 0 4px;
+}
+
+.ms-subtitle {
+  font-size: 13.5px;
+  color: #64768a;
+  margin: 0;
+}
+
+/* Toolbar */
+.ms-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.ms-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #dde3e9;
+  border-radius: 8px;
+  padding: 9px 12px;
+  min-width: 260px;
+  flex: 1;
+  max-width: 400px;
+  color: #64768a;
+}
+
+.ms-search input {
+  border: none;
+  outline: none;
+  font-size: 13.5px;
+  width: 100%;
+  color: #1c2a35;
+  background: transparent;
+}
+
+.ms-search input::placeholder {
+  color: #a0b0c0;
+}
+
+.ms-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ms-filter-select {
+  border: 1px solid #dde3e9;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #1c2a35;
+  min-width: 140px;
+  cursor: pointer;
+}
+
+.ms-filter-select:focus {
+  outline: none;
+  border-color: #c8752f;
+  box-shadow: 0 0 0 3px rgba(200, 117, 47, 0.1);
+}
+
+/* Stats */
+.ms-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.ms-stat-card {
+  background: #ffffff;
+  border: 1px solid #dde3e9;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 41, 66, 0.06);
+}
+
+.ms-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f2942;
+}
+
+.ms-stat-label {
+  font-size: 11.5px;
+  color: #64768a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+/* Table */
+.ms-table-wrap {
+  background: #ffffff;
+  border: 1px solid #dde3e9;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 41, 66, 0.06);
+  overflow: hidden;
+}
+
+.ms-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 1400px;
+}
+
+/* Column widths */
+.ms-col-po { min-width: 90px; width: 90px; }
+.ms-col-material { min-width: 100px; width: 100px; }
+.ms-col-grade { min-width: 100px; width: 100px; }
+.ms-col-spec { min-width: 120px; width: 120px; }
+.ms-col-thk { min-width: 60px; width: 60px; }
+.ms-col-width { min-width: 60px; width: 60px; }
+.ms-col-length { min-width: 60px; width: 60px; }
+.ms-col-heat { min-width: 80px; width: 80px; }
+.ms-col-plate { min-width: 80px; width: 80px; }
+.ms-col-batch { min-width: 70px; width: 70px; }
+.ms-col-qty { min-width: 70px; width: 70px; }
+.ms-col-warehouse { min-width: 120px; width: 120px; }
+.ms-col-rack { min-width: 80px; width: 80px; }
+.ms-col-weight { min-width: 80px; width: 80px; }
+.ms-col-status { min-width: 80px; width: 80px; }
+
+.ms-table thead th {
+  text-align: left;
+  background: #f4f6f8;
+  color: #64768a;
+  font-weight: 600;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 11px 14px;
+  border-bottom: 2px solid #dde3e9;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ms-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  background: #f4f6f8;
+  border-right: 1px solid #dde3e9;
+}
+
+.ms-table tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid #dde3e9;
+  color: #1c2a35;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ms-table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  background: #ffffff;
+  border-right: 1px solid #dde3e9;
+}
+
+.ms-table tbody tr:hover td:first-child {
+  background: #fafbfc;
+}
+
+.ms-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ms-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.ms-table-empty {
+  text-align: center;
+  padding: 40px 14px;
+  color: #64768a;
+}
+
+/* Status Badge */
+.ms-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ms-status-success {
+  background: #e6f4ea;
+  color: #1e7d3c;
+}
+
+.ms-status-warning {
+  background: #fdf1de;
+  color: #a85c00;
+}
+
+.ms-status-danger {
+  background: #fbe7e7;
+  color: #b3261e;
+}
+
+.ms-status-neutral {
+  background: #eceff2;
+  color: #4d5b68;
+}
+
+/* Text utilities */
+.ms-text-mono {
+  font-family: "SF Mono", "Consolas", monospace;
+  font-size: 12px;
+}
+
+.ms-available-qty {
+  color: #c8752f;
+  font-weight: 700;
+}
+
+/* Stock Summary */
+.ms-stock-summary {
+  margin-top: 20px;
+  background: #ffffff;
+  border: 1px solid #dde3e9;
+  border-radius: 8px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 2px rgba(15, 41, 66, 0.06);
+}
+
+.ms-summary-info h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #0f2942;
+}
+
+.ms-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.ms-summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #dde3e9;
+}
+
+.ms-summary-label {
+  color: #64768a;
+  font-size: 13px;
+}
+
+.ms-summary-value {
+  font-weight: 600;
+  color: #0f2942;
+}
+
+.ms-summary-note {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dde3e9;
+}
+
+.ms-summary-note small {
+  color: #64768a;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .ms-page {
+    padding: 20px 16px 48px;
+  }
+  
+  .ms-table-wrap {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ms-stat-row {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .ms-page {
+    padding: 14px 12px 40px;
+  }
+  
+  .ms-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ms-search {
+    min-width: 100%;
+    max-width: 100%;
+  }
+  
+  .ms-filters {
+    width: 100%;
+  }
+  
+  .ms-filter-select {
+    min-width: 100%;
+  }
+  
+  .ms-stat-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .ms-table {
+    font-size: 12px;
+    min-width: 1100px;
+  }
+  
+  .ms-table thead th,
+  .ms-table tbody td {
+    padding: 8px 10px;
+  }
+  
+  .ms-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .ms-stat-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .ms-table {
+    font-size: 11px;
+    min-width: 900px;
+  }
+  
+  .ms-table thead th,
+  .ms-table tbody td {
+    padding: 6px 8px;
+  }
+}
+/* Add to the beginning of each CSS file */
+
+/* Back Button */
+.grn-back-btn,
+.ms-back-btn,
+.imtc-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #64768a;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+}
+
+.grn-back-btn:hover,
+.ms-back-btn:hover,
+.imtc-back-btn:hover {
+  background: #f4f6f8;
+  color: #0f2942;
+}
+
+.grn-back-btn:active,
+.ms-back-btn:active,
+.imtc-back-btn:active {
+  transform: scale(0.95);
+}

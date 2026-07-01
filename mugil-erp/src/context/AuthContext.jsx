@@ -8,16 +8,27 @@ const CREDENTIALS = {
 };
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem("isAuthenticated") === "true",
+  );
+
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
   const login = (username, password) => {
     if (
       username === CREDENTIALS.username &&
       password === CREDENTIALS.password
     ) {
+      const loggedUser = { username };
+
       setIsAuthenticated(true);
-      setUser({ username });
+      setUser(loggedUser);
+
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("user", JSON.stringify(loggedUser));
       return { success: true };
     }
 
@@ -30,8 +41,13 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setIsAuthenticated(false);
     setUser(null);
-    localStorage.clear();
-    sessionStorage.clear();
+    const loggedUser = { username };
+
+    setIsAuthenticated(true);
+    setUser(loggedUser);
+
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("user", JSON.stringify(loggedUser));
   };
 
   return (

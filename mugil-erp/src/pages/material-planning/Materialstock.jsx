@@ -1,0 +1,277 @@
+import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useMaterialStore } from "../../data/materialStore";
+import "./MaterialStock.css";
+
+export default function MaterialStock() {
+  const { materialStock } = useMaterialStore();
+  const [search, setSearch] = useState("");
+  const [warehouseFilter, setWarehouseFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const warehouses = [...new Set(materialStock.map((r) => r.warehouse))];
+  const statuses = [...new Set(materialStock.map((r) => r.status))];
+
+  const rows = materialStock.filter((r) => {
+    const matchesSearch =
+      !search ||
+      [
+        r.material,
+        r.grade,
+        r.heatNumber,
+        r.plateNumber,
+        r.poNumber,
+        r.batchNumber,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.toLowerCase());
+    const matchesWarehouse =
+      !warehouseFilter || r.warehouse === warehouseFilter;
+    const matchesStatus = !statusFilter || r.status === statusFilter;
+    return matchesSearch && matchesWarehouse && matchesStatus;
+  });
+
+  const totalAvailable = materialStock.reduce(
+    (sum, r) => sum + r.availableQty,
+    0,
+  );
+
+  const totalReserved = materialStock.reduce(
+    (sum, r) => sum + (r.reservedQty || 0),
+    0,
+  );
+
+  const totalWeight = materialStock.reduce(
+    (sum, r) => sum + (r.weight * r.availableQty || 0),
+    0,
+  );
+
+  // Navigation function
+  const goBack = () => {
+    window.history.back();
+  };
+
+  return (
+    <div className="ms-page">
+      {/* Back Button */}
+      <button className="ms-back-btn" onClick={goBack}>
+        <ArrowLeft size={18} /> Back
+      </button>
+
+      {/* Breadcrumb */}
+      <div className="ms-breadcrumb">
+        <span className="ms-breadcrumb-item">Inventory</span>
+        <span className="ms-breadcrumb-sep">/</span>
+        <span className="ms-breadcrumb-item">Material</span>
+        <span className="ms-breadcrumb-sep">/</span>
+        <span className="ms-breadcrumb-item">Material Stock</span>
+      </div>
+
+      {/* Header */}
+      <div className="ms-header">
+        <h1 className="ms-title">Material Stock</h1>
+        <p className="ms-subtitle">
+          Live on-hand quantities from completed GRN receipts. Materials here
+          are ready for issuance to Cutting.
+        </p>
+      </div>
+
+      {/* Toolbar */}
+      <div className="ms-toolbar">
+        <div className="ms-search">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by material, grade, heat no., plate no., or batch no..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="ms-filters">
+          <select
+            className="ms-filter-select"
+            value={warehouseFilter}
+            onChange={(e) => setWarehouseFilter(e.target.value)}
+          >
+            <option value="">All Warehouses</option>
+            {warehouses.map((w) => (
+              <option key={w} value={w}>
+                {w}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="ms-filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Status</option>
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="ms-stat-row">
+        <div className="ms-stat-card">
+          <div className="ms-stat-value">{materialStock.length}</div>
+          <div className="ms-stat-label">Stock Lots</div>
+        </div>
+        <div className="ms-stat-card">
+          <div className="ms-stat-value">{totalAvailable}</div>
+          <div className="ms-stat-label">Available Qty (Units)</div>
+        </div>
+        <div className="ms-stat-card">
+          <div className="ms-stat-value">{totalReserved}</div>
+          <div className="ms-stat-label">Reserved Qty (Units)</div>
+        </div>
+        <div className="ms-stat-card">
+          <div className="ms-stat-value">{totalWeight.toFixed(1)}</div>
+          <div className="ms-stat-label">Total Weight (kg)</div>
+        </div>
+        <div className="ms-stat-card">
+          <div className="ms-stat-value">{warehouses.length}</div>
+          <div className="ms-stat-label">Warehouses</div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="ms-table-wrap">
+        <div className="ms-table-scroll">
+          <table className="ms-table">
+            <thead>
+              <tr>
+                <th className="ms-col-po">PO Number</th>
+                <th className="ms-col-material">Material</th>
+                <th className="ms-col-grade">Grade</th>
+                <th className="ms-col-spec">Specification</th>
+                <th className="ms-col-thk">Thk (mm)</th>
+                <th className="ms-col-width">Width (mm)</th>
+                <th className="ms-col-length">Length (mm)</th>
+                <th className="ms-col-heat">Heat No.</th>
+                <th className="ms-col-plate">Plate No.</th>
+                <th className="ms-col-batch">Batch No.</th>
+                <th className="ms-col-qty">Available Qty</th>
+                <th className="ms-col-qty">Reserved Qty</th>
+                <th className="ms-col-warehouse">Warehouse</th>
+                <th className="ms-col-rack">Rack Location</th>
+                <th className="ms-col-weight">Weight (kg)</th>
+                <th className="ms-col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="ms-col-po">
+                    <strong>{r.poNumber}</strong>
+                  </td>
+                  <td className="ms-col-material">{r.material}</td>
+                  <td className="ms-col-grade">{r.grade}</td>
+                  <td className="ms-col-spec">{r.specification || "-"}</td>
+                  <td className="ms-col-thk">{r.thickness}</td>
+                  <td className="ms-col-width">{r.width}</td>
+                  <td className="ms-col-length">{r.length}</td>
+                  <td className="ms-col-heat">
+                    <span className="ms-text-mono">{r.heatNumber}</span>
+                  </td>
+                  <td className="ms-col-plate">
+                    <span className="ms-text-mono">{r.plateNumber}</span>
+                  </td>
+                  <td className="ms-col-batch">{r.batchNumber || "-"}</td>
+                  <td className="ms-col-qty">
+                    <strong className="ms-available-qty">
+                      {r.availableQty}
+                    </strong>
+                  </td>
+                  <td className="ms-col-qty">{r.reservedQty || 0}</td>
+                  <td className="ms-col-warehouse">{r.warehouse}</td>
+                  <td className="ms-col-rack">{r.rackLocation || "-"}</td>
+                  <td className="ms-col-weight">
+                    {r.weight ? (r.weight * r.availableQty).toFixed(1) : "-"}
+                  </td>
+                  <td className="ms-col-status">
+                    <span
+                      className={`ms-status-badge ${
+                        r.status === "In Stock"
+                          ? "ms-status-success"
+                          : r.status === "Partially Issued"
+                            ? "ms-status-warning"
+                            : r.status === "Fully Issued"
+                              ? "ms-status-danger"
+                              : "ms-status-neutral"
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={16} className="ms-table-empty">
+                    No stock matches your search. Ensure materials have been
+                    received via GRN.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Stock Summary */}
+      <div className="ms-stock-summary">
+        <div className="ms-summary-info">
+          <h4>Stock Summary</h4>
+          <div className="ms-summary-grid">
+            <div className="ms-summary-item">
+              <span className="ms-summary-label">Total Lots:</span>
+              <span className="ms-summary-value">{materialStock.length}</span>
+            </div>
+            <div className="ms-summary-item">
+              <span className="ms-summary-label">Total Available:</span>
+              <span className="ms-summary-value">{totalAvailable} units</span>
+            </div>
+            <div className="ms-summary-item">
+              <span className="ms-summary-label">Total Reserved:</span>
+              <span className="ms-summary-value">{totalReserved} units</span>
+            </div>
+            <div className="ms-summary-item">
+              <span className="ms-summary-label">Total Weight:</span>
+              <span className="ms-summary-value">
+                {totalWeight.toFixed(1)} kg
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="ms-summary-note">
+          <small>
+            <strong>Note:</strong> Materials shown here are available for
+            issuance to Cutting. Materials with status "Fully Issued" or
+            "Partially Issued" have been reserved for production.
+          </small>
+        </div>
+      </div>
+    </div>
+  );
+}
