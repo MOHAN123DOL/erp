@@ -181,6 +181,19 @@ export default function IssueMaterialToCutting() {
     window.history.back();
   };
 
+  // Get status badge class
+  const getStatusBadgeClass = (status) => {
+    const statusMap = {
+      "In Stock": "imtc-status-success",
+      "Partially Issued": "imtc-status-warning",
+      "Fully Issued": "imtc-status-danger",
+      Available: "imtc-status-success",
+      "Issued to Production": "imtc-status-info",
+      Received: "imtc-status-neutral",
+    };
+    return statusMap[status] || "imtc-status-neutral";
+  };
+
   return (
     <div className="imtc-page">
       {/* Back Button */}
@@ -201,14 +214,25 @@ export default function IssueMaterialToCutting() {
       <div className="imtc-header">
         <h1 className="imtc-title">Issue Material to Cutting</h1>
         <p className="imtc-subtitle">
-          Issue raw plates from Material Stock to a cutting job. Reduces available stock immediately and creates a cutting job record.
+          Issue raw plates from Material Stock to a cutting job. Reduces
+          available stock immediately and creates a cutting job record.
         </p>
       </div>
 
       {/* Toolbar */}
       <div className="imtc-toolbar">
         <div className="imtc-search">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35" />
           </svg>
@@ -228,7 +252,9 @@ export default function IssueMaterialToCutting() {
           >
             <option value="">All Warehouses</option>
             {warehouses.map((w) => (
-              <option key={w} value={w}>{w}</option>
+              <option key={w} value={w}>
+                {w}
+              </option>
             ))}
           </select>
 
@@ -239,7 +265,9 @@ export default function IssueMaterialToCutting() {
           >
             <option value="">All Materials</option>
             {materials.map((m) => (
-              <option key={m} value={m}>{m}</option>
+              <option key={m} value={m}>
+                {m}
+              </option>
             ))}
           </select>
         </div>
@@ -305,7 +333,9 @@ export default function IssueMaterialToCutting() {
                     <span className="imtc-text-mono">{r.plateNumber}</span>
                   </td>
                   <td className="imtc-col-qty">
-                    <strong className="imtc-available-qty">{r.availableQty}</strong>
+                    <strong className="imtc-available-qty">
+                      {r.availableQty}
+                    </strong>
                   </td>
                   <td className="imtc-col-warehouse">{r.warehouse}</td>
                   <td className="imtc-col-rack">{r.rackLocation || "-"}</td>
@@ -313,12 +343,9 @@ export default function IssueMaterialToCutting() {
                     {r.weight ? (r.weight * r.availableQty).toFixed(1) : "-"}
                   </td>
                   <td className="imtc-col-status">
-                    <span className={`imtc-status-badge ${
-                      r.status === "In Stock" ? "imtc-status-success" :
-                      r.status === "Partially Issued" ? "imtc-status-warning" :
-                      r.status === "Fully Issued" ? "imtc-status-danger" :
-                      "imtc-status-neutral"
-                    }`}>
+                    <span
+                      className={`imtc-status-badge ${getStatusBadgeClass(r.status)}`}
+                    >
                       {r.status}
                     </span>
                   </td>
@@ -397,15 +424,21 @@ export default function IssueMaterialToCutting() {
                   <div className="imtc-detail-box">
                     <div className="imtc-detail-row">
                       <span className="imtc-detail-label">PO Number:</span>
-                      <span className="imtc-detail-value">{activeRow.poNumber}</span>
+                      <span className="imtc-detail-value">
+                        {activeRow.poNumber}
+                      </span>
                     </div>
                     <div className="imtc-detail-row">
                       <span className="imtc-detail-label">Material:</span>
-                      <span className="imtc-detail-value">{activeRow.material}</span>
+                      <span className="imtc-detail-value">
+                        {activeRow.material}
+                      </span>
                     </div>
                     <div className="imtc-detail-row">
                       <span className="imtc-detail-label">Grade:</span>
-                      <span className="imtc-detail-value">{activeRow.grade}</span>
+                      <span className="imtc-detail-value">
+                        {activeRow.grade}
+                      </span>
                     </div>
                     <div className="imtc-detail-row">
                       <span className="imtc-detail-label">Plate Number:</span>

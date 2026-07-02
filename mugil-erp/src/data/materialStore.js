@@ -2,9 +2,23 @@
 // -----------------------------------------------------------------------------
 // Single in-memory "source of truth" for the whole Material Management module.
 // No backend / no API calls — this is a lightweight pub/sub store so that every
-// page (GRN, Stock, Cutting, Production, Scrap, Rejection, Movement History,
-// Reports) reads and writes the SAME connected dataset instead of generating
-// its own random dummy data.
+// page (GRN, Stock, Cutting, Receive From Cutting, Cutting Balance Stock,
+// Issue To Production, Scrap, Rejection, Movement History) reads and writes
+// the SAME connected dataset instead of generating its own random dummy data.
+//
+// CHANGELOG (this revision)
+// - Added `finishedPieces` collection. Every piece created in "Receive From
+//   Cutting" becomes a row of production inventory here (NOT a bare quantity).
+// - `cuttingBalanceStock` now stores remainingLength / remainingWidth /
+//   remainingWeight per the Receive From Cutting form, and is a pure
+//   read-only inventory view (Cutting Balance Stock page has no actions).
+// - `receiveFromCutting` now accepts the full multi-piece payload (pieces[],
+//   balance, scrapWeight, rejectedQty, remarks) instead of bare counts, and
+//   fans out into finishedPieces / cuttingBalanceStock / scrapMaterials /
+//   rejectionMaterials + movement history in one transaction.
+// - `issueToProduction` now operates on `finishedPieces` (piece-level
+//   production inventory) instead of raw cutting-balance plates, matching
+//   the "Issue Material To Production" spec.
 // -----------------------------------------------------------------------------
 
 import { useSyncExternalStore } from "react";
@@ -22,6 +36,7 @@ const todayPlus = (days) => {
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 };
+const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // -----------------------------------------------------------------------------
 // MATERIAL MASTER — the catalogue every other record references
@@ -43,8 +58,6 @@ const findMaterial = (id) => materialMaster.find((m) => m.id === id);
 
 // -----------------------------------------------------------------------------
 // PURCHASE ORDERS (20 records — mix of Completed / Partial / Pending)
-// PO-1004 is the "hero" record that is threaded through every downstream stage
-// so the same PO Number / Heat Number / Plate Number appears end-to-end.
 // -----------------------------------------------------------------------------
 const suppliers = [
   "Shree Metaliks Pvt Ltd", "Bansal Steel Traders", "Ganpati Ispat", "Adani Steel Corp",
@@ -84,7 +97,7 @@ const purchaseOrders = [
   poRow(1001, "MAT-001", 100, 100),
   poRow(1002, "MAT-002", 80, 50),
   poRow(1003, "MAT-003", 40, 0),
-  poRow(1004, "MAT-001", 100, 60, { heatNumber: "HT-2291", plateNumber: "PL-4501" }), // hero chain
+  poRow(1004, "MAT-001", 100, 60, { heatNumber: "HT-2291", plateNumber: "PL-4501" }),
   poRow(1005, "MAT-004", 60, 60),
   poRow(1006, "MAT-005", 120, 0),
   poRow(1007, "MAT-006", 75, 75),
@@ -105,14 +118,21 @@ const purchaseOrders = [
 
 // -----------------------------------------------------------------------------
 // MATERIAL STOCK — one lot per PO that has ANY received quantity.
-// PO-1004 (hero) -> stock lot with 60 available, later drawn down by 40 when
-// issued to cutting, leaving 20 available / 40 reserved-out.
 // -----------------------------------------------------------------------------
 function buildInitialStock() {
   return purchaseOrders
     .filter((po) => po.receivedQty > 0)
     .map((po) => {
       const mat = findMaterial(po.materialId);
+      // For PO-1004, some quantity is already issued to cutting
+      let availableQty = po.receivedQty;
+      let status = "In Stock";
+
+      if (po.poNumber === "PO-1004") {
+        availableQty = 20; // 60 received - 40 issued to cutting
+        status = "Partially Issued";
+      }
+
       return {
         id: nextId("STK"),
         poNumber: po.poNumber,
@@ -123,11 +143,15 @@ function buildInitialStock() {
         length: mat.length,
         heatNumber: po.heatNumber,
         plateNumber: po.plateNumber,
-        availableQty: po.poNumber === "PO-1004" ? 20 : po.receivedQty, // hero already partly issued
-        reservedQty: po.poNumber === "PO-1004" ? 0 : 0,
+        availableQty: availableQty,
+        reservedQty: po.poNumber === "PO-1004" ? 40 : 0,
         warehouse: po.warehouse,
         weight: mat.weight,
-        status: po.poNumber === "PO-1004" ? "Partially Issued" : "In Stock",
+        status: status,
+        specification: mat.specification,
+        rackLocation: "",
+        batchNumber: "",
+        issuedToCutting: po.poNumber === "PO-1004" ? 40 : 0, // Track how much issued
       };
     });
 }
@@ -143,12 +167,15 @@ const cuttingJobs = [
     grade: "IS 2062 E250",
     heatNumber: "HT-2291",
     plateNumber: "PL-4501",
+    thickness: 12,
+    originalLength: 6300,
+    originalWidth: 2500,
     warehouse: "WH-A (Raw Material)",
     issuedQty: 40,
     issuedBy: "R. Kumar",
     issueDate: todayMinus(6),
     remarks: "Issued for bracket cutting - Line 2",
-    status: "Received", // already processed through Receive From Cutting
+    status: "Received",
   },
   {
     jobNumber: "CUT-2002",
@@ -156,7 +183,10 @@ const cuttingJobs = [
     material: "MS Plate",
     grade: "IS 2062 E250",
     heatNumber: "HT-2201",
-    plateNumber: "PL-4501".replace("4501", "4601"),
+    plateNumber: "PL-4601",
+    thickness: 12,
+    originalLength: 6300,
+    originalWidth: 2500,
     warehouse: "WH-A (Raw Material)",
     issuedQty: 25,
     issuedBy: "S. Verma",
@@ -167,8 +197,49 @@ const cuttingJobs = [
 ];
 
 // -----------------------------------------------------------------------------
-// RECEIVE FROM CUTTING -> CUTTING BALANCE / SCRAP / REJECTION
-// (already generated for CUT-2001 to demonstrate the full connected chain)
+// FINISHED PIECES — production inventory created in Receive From Cutting.
+// This is what "Issue Material To Production" reads from (never raw plates).
+// -----------------------------------------------------------------------------
+const finishedPieces = [
+  {
+    id: nextId("FP"),
+    jobNumber: "CUT-2001",
+    poNumber: "PO-1004",
+    plateNumber: "PL-4501",
+    pieceCode: "PC-2001-A",
+    drawingNumber: "DRG-101",
+    material: "MS Plate",
+    grade: "IS 2062 E250",
+    length: 500,
+    width: 300,
+    quantity: 40,
+    availableQty: 5, // 35 already issued to production (see productionIssues seed)
+    weight: 47.1,
+    warehouse: "WH-A (Raw Material)",
+    status: "Partially Issued",
+  },
+  {
+    id: nextId("FP"),
+    jobNumber: "CUT-2001",
+    poNumber: "PO-1004",
+    plateNumber: "PL-4501",
+    pieceCode: "PC-2001-B",
+    drawingNumber: "DRG-102",
+    material: "MS Plate",
+    grade: "IS 2062 E250",
+    length: 300,
+    width: 300,
+    quantity: 20,
+    availableQty: 20,
+    weight: 16.9,
+    warehouse: "WH-A (Raw Material)",
+    status: "Ready",
+  },
+];
+
+// -----------------------------------------------------------------------------
+// CUTTING BALANCE STOCK — leftover parent-plate remnants after cutting.
+// Read-only inventory view (no issue action per spec).
 // -----------------------------------------------------------------------------
 const cuttingBalanceStock = [
   {
@@ -177,10 +248,8 @@ const cuttingBalanceStock = [
     parentPlate: "PL-4501",
     material: "MS Plate",
     grade: "IS 2062 E250",
-    thickness: 12,
-    width: 2500,
-    originalLength: 6300,
     remainingLength: 1800,
+    remainingWidth: 2500,
     remainingWeight: 423.9,
     warehouse: "WH-A (Raw Material)",
     status: "Available",
@@ -218,17 +287,18 @@ const rejectionMaterials = [
 ];
 
 // -----------------------------------------------------------------------------
-// ISSUE MATERIAL TO PRODUCTION
+// ISSUE MATERIAL TO PRODUCTION — sourced from finishedPieces
 // -----------------------------------------------------------------------------
 const productionIssues = [
   {
     id: nextId("PIS"),
     productionOrder: "PROD-9001",
     jobCard: "JC-7001",
-    material: "MS Plate (Cut Pieces)",
+    pieceCode: "PC-2001-A",
+    drawingNumber: "DRG-101",
+    jobNumber: "CUT-2001",
+    material: "MS Plate",
     grade: "IS 2062 E250",
-    sourceJob: "CUT-2001",
-    availableQty: 35,
     issuedQty: 35,
     issueDate: todayMinus(4),
     department: "Assembly",
@@ -238,26 +308,28 @@ const productionIssues = [
 ];
 
 // -----------------------------------------------------------------------------
-// MOVEMENT HISTORY (audit trail) — seeded with the full hero chain
+// MOVEMENT HISTORY (audit trail)
 // -----------------------------------------------------------------------------
 const movementHistory = [
   { id: nextId("MOV"), date: todayMinus(9), material: "MS Plate (PL-4501)", movementType: "Purchase Order Raised", from: "Shree Metaliks Pvt Ltd", to: "PO-1004", quantity: 100, user: "A. Sharma" },
   { id: nextId("MOV"), date: todayMinus(8), material: "MS Plate (PL-4501)", movementType: "GRN Receipt", from: "Supplier", to: "Material Stock (WH-A)", quantity: 60, user: "A. Sharma" },
   { id: nextId("MOV"), date: todayMinus(6), material: "MS Plate (PL-4501)", movementType: "Issue to Cutting", from: "Material Stock (WH-A)", to: "CUT-2001", quantity: 40, user: "R. Kumar" },
-  { id: nextId("MOV"), date: todayMinus(5), material: "MS Plate (PL-4501)", movementType: "Receive from Cutting - Balance", from: "CUT-2001", to: "Cutting Balance Stock", quantity: 3, user: "R. Kumar" },
-  { id: nextId("MOV"), date: todayMinus(5), material: "MS Plate (PL-4501)", movementType: "Receive from Cutting - Scrap", from: "CUT-2001", to: "Scrap Materials", quantity: 1, user: "R. Kumar" },
+  { id: nextId("MOV"), date: todayMinus(5), material: "MS Plate (PL-4501)", movementType: "Receive from Cutting - Finished Pieces", from: "CUT-2001", to: "Finished Pieces Inventory", quantity: 60, user: "R. Kumar" },
+  { id: nextId("MOV"), date: todayMinus(5), material: "MS Plate (PL-4501)", movementType: "Receive from Cutting - Balance", from: "CUT-2001", to: "Cutting Balance Stock", quantity: 1, user: "R. Kumar" },
+  { id: nextId("MOV"), date: todayMinus(5), material: "MS Plate (PL-4501)", movementType: "Receive from Cutting - Scrap", from: "CUT-2001", to: "Scrap Materials", quantity: 38.2, user: "R. Kumar" },
   { id: nextId("MOV"), date: todayMinus(5), material: "MS Plate (PL-4501)", movementType: "Receive from Cutting - Rejection", from: "CUT-2001", to: "Rejection Materials", quantity: 1, user: "R. Kumar" },
-  { id: nextId("MOV"), date: todayMinus(4), material: "MS Plate (Cut Pieces)", movementType: "Issue to Production", from: "Cutting Output (CUT-2001)", to: "PROD-9001 / JC-7001", quantity: 35, user: "M. Iyer" },
+  { id: nextId("MOV"), date: todayMinus(4), material: "MS Plate (PC-2001-A)", movementType: "Issue to Production", from: "Finished Pieces (CUT-2001)", to: "PROD-9001 / JC-7001", quantity: 35, user: "M. Iyer" },
 ];
 
 // -----------------------------------------------------------------------------
-// STORE (pub/sub) — no external dependency, just React's useSyncExternalStore
+// STORE (pub/sub)
 // -----------------------------------------------------------------------------
 let state = {
   materialMaster,
   purchaseOrders,
   materialStock: buildInitialStock(),
   cuttingJobs,
+  finishedPieces,
   cuttingBalanceStock,
   scrapMaterials,
   rejectionMaterials,
@@ -276,7 +348,7 @@ function setState(updater) {
 function logMovement(entry) {
   return {
     id: nextId("MOV"),
-    date: new Date().toISOString().slice(0, 10),
+    date: todayStr(),
     user: "Current User",
     ...entry,
   };
@@ -307,13 +379,17 @@ export function receiveGRN(poNumber, qty, extra = {}) {
         thickness: mat.thickness,
         width: mat.width,
         length: mat.length,
-        heatNumber: po.heatNumber,
-        plateNumber: po.plateNumber,
+        heatNumber: extra.heatNumber || po.heatNumber,
+        plateNumber: extra.plateNumber || po.plateNumber,
         availableQty: qty,
         reservedQty: 0,
-        warehouse: po.warehouse,
+        warehouse: extra.warehouse || po.warehouse,
         weight: mat.weight,
         status: "In Stock",
+        specification: mat.specification,
+        rackLocation: extra.rackLocation || "",
+        batchNumber: extra.batchNumber || "",
+        issuedToCutting: 0,
         ...extra,
       },
     ];
@@ -330,9 +406,27 @@ export function receiveGRN(poNumber, qty, extra = {}) {
 export function issueToCutting({ stockId, jobNumber, issuedQty, issuedBy, remarks }) {
   setState((s) => {
     const stockRow = s.materialStock.find((r) => r.id === stockId);
+    if (!stockRow) return s;
+
+    const newAvailableQty = stockRow.availableQty - issuedQty;
+    const newIssuedToCutting = (stockRow.issuedToCutting || 0) + issuedQty;
+
+    let newStatus = "In Stock";
+    if (newAvailableQty === 0) {
+      newStatus = "Fully Issued";
+    } else if (newAvailableQty < stockRow.availableQty) {
+      newStatus = "Partially Issued";
+    }
+
     const materialStock = s.materialStock.map((r) =>
       r.id === stockId
-        ? { ...r, availableQty: r.availableQty - issuedQty, status: r.availableQty - issuedQty <= 0 ? "Fully Issued" : "Partially Issued" }
+        ? {
+            ...r,
+            availableQty: newAvailableQty,
+            reservedQty: (r.reservedQty || 0) + issuedQty,
+            issuedToCutting: newIssuedToCutting,
+            status: newStatus,
+          }
         : r
     );
 
@@ -344,10 +438,13 @@ export function issueToCutting({ stockId, jobNumber, issuedQty, issuedBy, remark
         grade: stockRow.grade,
         heatNumber: stockRow.heatNumber,
         plateNumber: stockRow.plateNumber,
+        thickness: stockRow.thickness,
+        originalLength: stockRow.length,
+        originalWidth: stockRow.width,
         warehouse: stockRow.warehouse,
         issuedQty,
         issuedBy,
-        issueDate: new Date().toISOString().slice(0, 10),
+        issueDate: todayStr(),
         remarks,
         status: "Open",
       },
@@ -355,7 +452,14 @@ export function issueToCutting({ stockId, jobNumber, issuedQty, issuedBy, remark
     ];
 
     const movementHistory = [
-      logMovement({ material: stockRow.material, movementType: "Issue to Cutting", from: `Material Stock (${stockRow.warehouse})`, to: jobNumber, quantity: issuedQty, user: issuedBy }),
+      logMovement({
+        material: stockRow.material,
+        movementType: "Issue to Cutting",
+        from: `Material Stock (${stockRow.warehouse})`,
+        to: jobNumber,
+        quantity: issuedQty,
+        user: issuedBy,
+      }),
       ...s.movementHistory,
     ];
 
@@ -363,86 +467,188 @@ export function issueToCutting({ stockId, jobNumber, issuedQty, issuedBy, remark
   });
 }
 
-export function receiveFromCutting({ jobNumber, finishedPieces, cuttingBalanceQty, scrapQty, rejectedQty, remarks }) {
+/**
+ * Receive From Cutting — closes a cutting job and fans the output into
+ * production inventory (finishedPieces), leftover raw material
+ * (cuttingBalanceStock), scrap, and rejection.
+ *
+ * payload = {
+ *   jobNumber: "CUT-2002",
+ *   pieces: [{ pieceCode, drawingNumber, length, width, quantity, weight }, ...],
+ *   balance: { exists: boolean, remainingLength, remainingWidth, remainingWeight },
+ *   scrapWeight: number,
+ *   rejectedQty: number,
+ *   remarks: string,
+ *   receivedBy: string,
+ * }
+ */
+export function receiveFromCutting(payload) {
+  const { jobNumber, pieces = [], balance, scrapWeight = 0, rejectedQty = 0, remarks = "", receivedBy = "Current User" } = payload;
+
   setState((s) => {
     const job = s.cuttingJobs.find((j) => j.jobNumber === jobNumber);
+    if (!job) return s;
 
-    const cuttingJobs = s.cuttingJobs.map((j) => (j.jobNumber === jobNumber ? { ...j, status: "Received" } : j));
+    // 1. Close the cutting job
+    const cuttingJobs = s.cuttingJobs.map((j) =>
+      j.jobNumber === jobNumber ? { ...j, status: "Received" } : j
+    );
 
-    const cuttingBalanceStock = cuttingBalanceQty > 0
-      ? [
-          {
-            id: nextId("CBS"),
-            jobNumber,
-            parentPlate: job.plateNumber,
-            material: job.material,
-            grade: job.grade,
-            thickness: 12,
-            width: 2500,
-            originalLength: 6300,
-            remainingLength: 1800,
-            remainingWeight: Math.round(cuttingBalanceQty * 141.3 * 10) / 10,
-            warehouse: job.warehouse,
-            status: "Available",
-          },
-          ...s.cuttingBalanceStock,
-        ]
-      : s.cuttingBalanceStock;
+    // 2. Create finished pieces (production inventory)
+    const newFinishedPieces = pieces.map((p) => ({
+      id: nextId("FP"),
+      jobNumber,
+      poNumber: job.poNumber,
+      plateNumber: job.plateNumber,
+      pieceCode: p.pieceCode,
+      drawingNumber: p.drawingNumber,
+      material: job.material,
+      grade: job.grade,
+      length: Number(p.length) || 0,
+      width: Number(p.width) || 0,
+      quantity: Number(p.quantity) || 0,
+      availableQty: Number(p.quantity) || 0,
+      weight: Number(p.weight) || 0,
+      warehouse: job.warehouse,
+      status: "Ready",
+    }));
+    const finishedPieces = [...newFinishedPieces, ...s.finishedPieces];
 
-    const scrapMaterials = scrapQty > 0
-      ? [
-          {
-            id: nextId("SCR"),
-            material: job.material,
-            grade: job.grade,
-            sourceJob: jobNumber,
-            plateNumber: job.plateNumber,
-            weight: Math.round(scrapQty * 38.2 * 10) / 10,
-            quantity: scrapQty,
-            reason: "Trim waste from cutting",
-            warehouse: job.warehouse,
-            status: "Available",
-          },
-          ...s.scrapMaterials,
-        ]
-      : s.scrapMaterials;
+    // 3. Create cutting balance (if any)
+    const cuttingBalanceStock =
+      balance && balance.exists
+        ? [
+            {
+              id: nextId("CBS"),
+              jobNumber,
+              parentPlate: job.plateNumber,
+              material: job.material,
+              grade: job.grade,
+              remainingLength: Number(balance.remainingLength) || 0,
+              remainingWidth: Number(balance.remainingWidth) || 0,
+              remainingWeight: Number(balance.remainingWeight) || 0,
+              warehouse: job.warehouse,
+              status: "Available",
+            },
+            ...s.cuttingBalanceStock,
+          ]
+        : s.cuttingBalanceStock;
 
-    const rejectionMaterials = rejectedQty > 0
-      ? [
-          {
-            id: nextId("REJ"),
-            material: job.material,
-            grade: job.grade,
-            sourceJob: jobNumber,
-            plateNumber: job.plateNumber,
-            weight: Math.round(rejectedQty * 41.5 * 10) / 10,
-            quantity: rejectedQty,
-            reason: "Quality Failure",
-            department: "Cutting",
-            date: new Date().toISOString().slice(0, 10),
-          },
-          ...s.rejectionMaterials,
-        ]
-      : s.rejectionMaterials;
+    // 4. Create scrap record (if any)
+    const scrapMaterials =
+      scrapWeight > 0
+        ? [
+            {
+              id: nextId("SCR"),
+              material: job.material,
+              grade: job.grade,
+              sourceJob: jobNumber,
+              plateNumber: job.plateNumber,
+              weight: Number(scrapWeight),
+              quantity: 1,
+              reason: "Trim waste from cutting",
+              warehouse: job.warehouse,
+              status: "Available",
+            },
+            ...s.scrapMaterials,
+          ]
+        : s.scrapMaterials;
 
+    // 5. Create rejection record (if any)
+    const rejectionMaterials =
+      rejectedQty > 0
+        ? [
+            {
+              id: nextId("REJ"),
+              material: job.material,
+              grade: job.grade,
+              sourceJob: jobNumber,
+              plateNumber: job.plateNumber,
+              weight: 0,
+              quantity: Number(rejectedQty),
+              reason: "Quality Failure",
+              department: "Cutting",
+              date: todayStr(),
+            },
+            ...s.rejectionMaterials,
+          ]
+        : s.rejectionMaterials;
+
+    // 6. Movement history for every leg of the transaction
+    const totalPieceQty = newFinishedPieces.reduce((sum, p) => sum + p.quantity, 0);
     const movementHistory = [
-      logMovement({ material: job.material, movementType: "Receive from Cutting - Finished", from: jobNumber, to: "Cutting Output", quantity: finishedPieces }),
-      ...(cuttingBalanceQty > 0 ? [logMovement({ material: job.material, movementType: "Receive from Cutting - Balance", from: jobNumber, to: "Cutting Balance Stock", quantity: cuttingBalanceQty })] : []),
-      ...(scrapQty > 0 ? [logMovement({ material: job.material, movementType: "Receive from Cutting - Scrap", from: jobNumber, to: "Scrap Materials", quantity: scrapQty })] : []),
-      ...(rejectedQty > 0 ? [logMovement({ material: job.material, movementType: "Receive from Cutting - Rejection", from: jobNumber, to: "Rejection Materials", quantity: rejectedQty })] : []),
+      ...(newFinishedPieces.length > 0
+        ? [
+            logMovement({
+              material: job.material,
+              movementType: "Receive from Cutting - Finished Pieces",
+              from: jobNumber,
+              to: "Finished Pieces Inventory",
+              quantity: totalPieceQty,
+              user: receivedBy,
+            }),
+          ]
+        : []),
+      ...(balance && balance.exists
+        ? [
+            logMovement({
+              material: job.material,
+              movementType: "Receive from Cutting - Balance",
+              from: jobNumber,
+              to: "Cutting Balance Stock",
+              quantity: 1,
+              user: receivedBy,
+            }),
+          ]
+        : []),
+      ...(scrapWeight > 0
+        ? [
+            logMovement({
+              material: job.material,
+              movementType: "Receive from Cutting - Scrap",
+              from: jobNumber,
+              to: "Scrap Materials",
+              quantity: Number(scrapWeight),
+              user: receivedBy,
+            }),
+          ]
+        : []),
+      ...(rejectedQty > 0
+        ? [
+            logMovement({
+              material: job.material,
+              movementType: "Receive from Cutting - Rejection",
+              from: jobNumber,
+              to: "Rejection Materials",
+              quantity: Number(rejectedQty),
+              user: receivedBy,
+            }),
+          ]
+        : []),
       ...s.movementHistory,
     ];
 
-    return { cuttingJobs, cuttingBalanceStock, scrapMaterials, rejectionMaterials, movementHistory };
+    return { cuttingJobs, finishedPieces, cuttingBalanceStock, scrapMaterials, rejectionMaterials, movementHistory };
   });
 }
 
-export function issueToProduction({ balanceId, productionOrder, jobCard, issuedQty, department, issuedBy, remarks }) {
+/**
+ * Issue Material To Production — issues qty from a finished piece
+ * (production inventory), never from raw plates.
+ */
+export function issueToProduction({ pieceId, productionOrder, jobCard, issuedQty, department, issuedBy, remarks }) {
   setState((s) => {
-    const balanceRow = s.cuttingBalanceStock.find((r) => r.id === balanceId);
+    const piece = s.finishedPieces.find((p) => p.id === pieceId);
+    if (!piece) return s;
 
-    const cuttingBalanceStock = s.cuttingBalanceStock.map((r) =>
-      r.id === balanceId ? { ...r, status: "Issued to Production" } : r
+    const qty = Number(issuedQty) || 0;
+    if (qty <= 0 || qty > piece.availableQty) return s; // guard, UI validates too
+
+    const newAvailableQty = piece.availableQty - qty;
+    const newStatus = newAvailableQty === 0 ? "Fully Issued" : "Partially Issued";
+
+    const finishedPieces = s.finishedPieces.map((p) =>
+      p.id === pieceId ? { ...p, availableQty: newAvailableQty, status: newStatus } : p
     );
 
     const productionIssues = [
@@ -450,12 +656,13 @@ export function issueToProduction({ balanceId, productionOrder, jobCard, issuedQ
         id: nextId("PIS"),
         productionOrder,
         jobCard,
-        material: balanceRow.material,
-        grade: balanceRow.grade,
-        sourceJob: balanceRow.jobNumber,
-        availableQty: 1,
-        issuedQty,
-        issueDate: new Date().toISOString().slice(0, 10),
+        pieceCode: piece.pieceCode,
+        drawingNumber: piece.drawingNumber,
+        jobNumber: piece.jobNumber,
+        material: piece.material,
+        grade: piece.grade,
+        issuedQty: qty,
+        issueDate: todayStr(),
         department,
         issuedBy,
         remarks,
@@ -464,11 +671,18 @@ export function issueToProduction({ balanceId, productionOrder, jobCard, issuedQ
     ];
 
     const movementHistory = [
-      logMovement({ material: balanceRow.material, movementType: "Issue to Production", from: "Cutting Balance Stock", to: `${productionOrder} / ${jobCard}`, quantity: issuedQty, user: issuedBy }),
+      logMovement({
+        material: `${piece.material} (${piece.pieceCode})`,
+        movementType: "Issue to Production",
+        from: "Finished Pieces Inventory",
+        to: `${productionOrder} / ${jobCard}`,
+        quantity: qty,
+        user: issuedBy,
+      }),
       ...s.movementHistory,
     ];
 
-    return { cuttingBalanceStock, productionIssues, movementHistory };
+    return { finishedPieces, productionIssues, movementHistory };
   });
 }
 
@@ -488,4 +702,6 @@ export const statusOptions = {
   po: ["Pending", "Partial", "Completed"],
   scrap: ["Available", "Sold", "Disposed"],
   rejection: ["Wrong Dimension", "Bent", "Rust", "Quality Failure", "Damaged"],
+  finishedPiece: ["Ready", "Partially Issued", "Fully Issued"],
+  cuttingBalance: ["Available", "Issued to Production", "Consumed"],
 };

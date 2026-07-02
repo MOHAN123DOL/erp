@@ -42,6 +42,11 @@ export default function MaterialStock() {
     0,
   );
 
+  const totalIssuedToCutting = materialStock.reduce(
+    (sum, r) => sum + (r.issuedToCutting || 0),
+    0,
+  );
+
   const totalWeight = materialStock.reduce(
     (sum, r) => sum + (r.weight * r.availableQty || 0),
     0,
@@ -50,6 +55,19 @@ export default function MaterialStock() {
   // Navigation function
   const goBack = () => {
     window.history.back();
+  };
+
+  // Get status badge class
+  const getStatusBadgeClass = (status) => {
+    const statusMap = {
+      "In Stock": "ms-status-success",
+      "Partially Issued": "ms-status-warning",
+      "Fully Issued": "ms-status-danger",
+      Available: "ms-status-success",
+      "Issued to Production": "ms-status-info",
+      Received: "ms-status-neutral",
+    };
+    return statusMap[status] || "ms-status-neutral";
   };
 
   return (
@@ -72,8 +90,9 @@ export default function MaterialStock() {
       <div className="ms-header">
         <h1 className="ms-title">Material Stock</h1>
         <p className="ms-subtitle">
-          Live on-hand quantities from completed GRN receipts. Materials here
-          are ready for issuance to Cutting.
+          Live on-hand quantities from completed GRN receipts. Materials shown
+          with "Partially Issued" or "Fully Issued" status have been issued to
+          cutting.
         </p>
       </div>
 
@@ -139,19 +158,19 @@ export default function MaterialStock() {
         </div>
         <div className="ms-stat-card">
           <div className="ms-stat-value">{totalAvailable}</div>
-          <div className="ms-stat-label">Available Qty (Units)</div>
+          <div className="ms-stat-label">Available Qty</div>
+        </div>
+        <div className="ms-stat-card">
+          <div className="ms-stat-value">{totalIssuedToCutting}</div>
+          <div className="ms-stat-label">Issued to Cutting</div>
         </div>
         <div className="ms-stat-card">
           <div className="ms-stat-value">{totalReserved}</div>
-          <div className="ms-stat-label">Reserved Qty (Units)</div>
+          <div className="ms-stat-label">Reserved Qty</div>
         </div>
         <div className="ms-stat-card">
           <div className="ms-stat-value">{totalWeight.toFixed(1)}</div>
           <div className="ms-stat-label">Total Weight (kg)</div>
-        </div>
-        <div className="ms-stat-card">
-          <div className="ms-stat-value">{warehouses.length}</div>
-          <div className="ms-stat-label">Warehouses</div>
         </div>
       </div>
 
@@ -172,7 +191,7 @@ export default function MaterialStock() {
                 <th className="ms-col-plate">Plate No.</th>
                 <th className="ms-col-batch">Batch No.</th>
                 <th className="ms-col-qty">Available Qty</th>
-                <th className="ms-col-qty">Reserved Qty</th>
+                <th className="ms-col-qty">Issued to Cutting</th>
                 <th className="ms-col-warehouse">Warehouse</th>
                 <th className="ms-col-rack">Rack Location</th>
                 <th className="ms-col-weight">Weight (kg)</th>
@@ -203,7 +222,7 @@ export default function MaterialStock() {
                       {r.availableQty}
                     </strong>
                   </td>
-                  <td className="ms-col-qty">{r.reservedQty || 0}</td>
+                  <td className="ms-col-qty">{r.issuedToCutting || 0}</td>
                   <td className="ms-col-warehouse">{r.warehouse}</td>
                   <td className="ms-col-rack">{r.rackLocation || "-"}</td>
                   <td className="ms-col-weight">
@@ -211,15 +230,7 @@ export default function MaterialStock() {
                   </td>
                   <td className="ms-col-status">
                     <span
-                      className={`ms-status-badge ${
-                        r.status === "In Stock"
-                          ? "ms-status-success"
-                          : r.status === "Partially Issued"
-                            ? "ms-status-warning"
-                            : r.status === "Fully Issued"
-                              ? "ms-status-danger"
-                              : "ms-status-neutral"
-                      }`}
+                      className={`ms-status-badge ${getStatusBadgeClass(r.status)}`}
                     >
                       {r.status}
                     </span>
@@ -253,6 +264,12 @@ export default function MaterialStock() {
               <span className="ms-summary-value">{totalAvailable} units</span>
             </div>
             <div className="ms-summary-item">
+              <span className="ms-summary-label">Total Issued to Cutting:</span>
+              <span className="ms-summary-value">
+                {totalIssuedToCutting} units
+              </span>
+            </div>
+            <div className="ms-summary-item">
               <span className="ms-summary-label">Total Reserved:</span>
               <span className="ms-summary-value">{totalReserved} units</span>
             </div>
@@ -266,9 +283,11 @@ export default function MaterialStock() {
         </div>
         <div className="ms-summary-note">
           <small>
-            <strong>Note:</strong> Materials shown here are available for
-            issuance to Cutting. Materials with status "Fully Issued" or
-            "Partially Issued" have been reserved for production.
+            <strong>Note:</strong>• <strong>In Stock</strong> - Material is
+            fully available for issuance • <strong>Partially Issued</strong> -
+            Some quantity has been issued to cutting •{" "}
+            <strong>Fully Issued</strong> - All quantity has been issued to
+            cutting
           </small>
         </div>
       </div>

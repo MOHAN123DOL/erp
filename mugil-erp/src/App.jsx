@@ -17,6 +17,9 @@ import MaterialGRN from "./pages/material-planning/Materialgrn";
 import MaterialStock from "./pages/material-planning/Materialstock";
 
 import IssueMaterialToCutting from "./pages/material-planning/issuematerialtocutting";
+import ReceiveFromCutting from "./pages/material-planning/Receivefromcutting";
+import CuttingBalanceStock from "./pages/material-planning/Cuttingbalancestock";
+import IssueToProduction from "./pages/material-planning/issuetoprod";
 
 export default function App() {
   return (
@@ -90,6 +93,32 @@ export default function App() {
           element={
             <ProtectedRoute>
               <IssueMaterialToCutting />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inventory/material/receive-cutting"
+          element={
+            <ProtectedRoute>
+              <ReceiveFromCutting />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory/material/stock/cutting-balance"
+          element={
+            <ProtectedRoute>
+              <CuttingBalanceStock />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inventory/material/issue-production"
+          element={
+            <ProtectedRoute>
+              <IssueToProduction />
             </ProtectedRoute>
           }
         />
